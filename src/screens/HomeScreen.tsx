@@ -26,11 +26,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         title="BLEページへ"
         onPress={() => navigation.navigate('Ble')}
       />
+      <Recorder />
     </View>
   );
 };
 
 import { StyleSheet } from 'react-native';
+import Recorder from '../components/Recorder';
 
 export default HomeScreen;
 
