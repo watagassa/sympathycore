@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './utils/types';
 import HomeScreen from './screens/HomeScreen';
 import DetailScreen from './screens/DetailScreen';
+import BleScreen from './screens/BleScanner';
 
 // Stack Navigatorの型を指定
 // 新しい画面を追加する時は、RootStackParamListに追加すること
@@ -24,6 +25,11 @@ const App: React.FC = () => {
           name="Detail"
           component={DetailScreen}
           options={{ title: '遷移先ページ' }}
+        />
+        <Stack.Screen
+          name="Ble"
+          component={BleScreen}
+          options={{ title: 'BLEページ' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
