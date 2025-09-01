@@ -22,11 +22,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         title="遷移先ページへ"
         onPress={() => navigation.navigate('Detail')}
       />
+      <Recorder />
     </View>
   );
 };
 
 import { StyleSheet } from 'react-native';
+import Recorder from '../components/Recorder';
 
 export default HomeScreen;
 
