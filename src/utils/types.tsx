@@ -2,4 +2,5 @@
 export type RootStackParamList = {
   Home: undefined;
   Detail: undefined;
+  Ble: undefined;
 };

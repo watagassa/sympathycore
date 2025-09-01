@@ -22,6 +22,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         title="遷移先ページへ"
         onPress={() => navigation.navigate('Detail')}
       />
+      <Button
+        title="BLEページへ"
+        onPress={() => navigation.navigate('Ble')}
+      />
     </View>
   );
 };
