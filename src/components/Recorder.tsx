@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Button,
-  PermissionsAndroid,
-  Platform,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, Button, StyleSheet } from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import RNFS from 'react-native-fs'; // ← 追加
+
 import { checkPermissions } from './checkPermissions';
+import { requestMicPermission } from '../utils/permission';
+import transcribeAudioFile from '../api/wisper';
 
 const audioRecorderPlayer = AudioRecorderPlayer;
 
@@ -16,37 +13,19 @@ const Recorder = () => {
   const [recording, setRecording] = useState(false);
   const [filePath, setFilePath] = useState('');
 
-  // Androidのパーミッションリクエスト
-  const requestPermission = async () => {
-    if (Platform.OS === 'android') {
-      console.log('Androidのパーミッションをリクエスト');
-      try {
-        const granted = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-        console.log('パーミッションの結果:', granted);
-        return (
-          granted['android.permission.RECORD_AUDIO'] ===
-          PermissionsAndroid.RESULTS.GRANTED
-        );
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true; // iOSはinfo.plistで対応
-  };
+  // 保存先のパスを DocumentDirectoryPath に指定
+  const audioPath = `${RNFS.DocumentDirectoryPath}/sound.mp4`;
 
   // 録音開始
   const startRecording = async () => {
-    const hasPermission = await requestPermission();
+    const hasPermission = await requestMicPermission();
     if (!hasPermission) {
       console.log('マイク権限がありません');
       return;
     }
 
     try {
-      const uri = await audioRecorderPlayer.startRecorder();
+      const uri = await audioRecorderPlayer.startRecorder(audioPath);
       console.log('録音開始: ', uri);
       setFilePath(uri);
       setRecording(true);
@@ -74,6 +53,8 @@ const Recorder = () => {
     }
     await audioRecorderPlayer.startPlayer(filePath);
     console.log('再生開始: ', filePath);
+    const soundText = await transcribeAudioFile();
+    console.log('Transcription: ', soundText);
   };
 
   return (

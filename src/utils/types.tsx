@@ -4,3 +4,14 @@ export type RootStackParamList = {
   Detail: undefined;
   Ble: undefined;
 };
+
+export type analyzeType = {
+  sentiment: 'positive' | 'neutral' | 'negative';
+  score: number; // 0.0 - 1.0
+  hsv: [number, number, number]; // [hue, saturation, value]
+};
+
+export type TranscriptionResponse = {
+  text: string;
+  analyze: analyzeType;
+};
