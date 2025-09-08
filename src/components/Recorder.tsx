@@ -6,12 +6,14 @@ import RNFS from 'react-native-fs'; // ← 追加
 import { checkPermissions } from './checkPermissions';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
+import { AudioFilePicker } from './AudioFilePicker';
 
 const audioRecorderPlayer = AudioRecorderPlayer;
 
 const Recorder = () => {
   const [recording, setRecording] = useState(false);
   const [filePath, setFilePath] = useState('');
+  const [savedPath, setSavedPath] = useState(''); // 追加: 保存したファイルのパス
 
   // 保存先のパスを DocumentDirectoryPath に指定
   const audioPath = `${RNFS.DocumentDirectoryPath}/sound.mp4`;
@@ -57,6 +59,17 @@ const Recorder = () => {
     console.log('Transcription: ', soundText);
   };
 
+  const playPickFile = async () => {
+    if (!savedPath) {
+      console.log('指定ファイルがありません');
+      return;
+    }
+    await audioRecorderPlayer.startPlayer(savedPath);
+    console.log('再生開始: ', savedPath);
+    const soundText = await transcribeAudioFile({ filePath: savedPath });
+    console.log('Transcription: ', soundText);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🎤 録音デモ</Text>
@@ -69,6 +82,14 @@ const Recorder = () => {
       <View style={styles.space} />
       <Button title="録音を再生" onPress={playRecording} />
       <Text style={styles.path}>保存先: {filePath || 'なし'}</Text>
+      <Button title="指定の音声ファイルを確認" onPress={playRecording} />
+      <AudioFilePicker
+        onSaved={path => {
+          // 保存完了したファイルのパスを state に保存
+          setSavedPath(path);
+        }}
+      />
+      <Button title="指定ファイルを再生" onPress={playPickFile} />
     </View>
   );
 };

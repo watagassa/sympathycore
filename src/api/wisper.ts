@@ -1,9 +1,16 @@
 import RNFS from 'react-native-fs';
 import { TranscriptionResponse } from '../utils/types';
 
-export default async function transcribeAudioFile() {
-  const filePath = RNFS.DocumentDirectoryPath + '/sound.mp4';
-
+type Props = {
+  filePath?: string;
+};
+export default async function transcribeAudioFile(props?: Props) {
+  let filePath;
+  if (props?.filePath) {
+    filePath = props.filePath;
+  } else {
+    filePath = RNFS.DocumentDirectoryPath + '/sound.mp4';
+  }
   const formData = new FormData();
   formData.append('file', {
     uri: 'file://' + filePath,
@@ -11,7 +18,7 @@ export default async function transcribeAudioFile() {
     name: 'sound3.mp4',
   });
   // PCのローカルIPを指定すること  192.168.11.25
-  const res = await fetch('http://10.14.5.163:8000/transcribe', {
+  const res = await fetch('http://10.14.2.188:8000/transcribe', {
     method: 'POST',
     body: formData,
     headers: {
