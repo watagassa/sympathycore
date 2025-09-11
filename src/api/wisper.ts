@@ -18,14 +18,16 @@ export default async function transcribeAudioFile(props?: Props) {
     name: 'sound3.mp4',
   });
   // PCのローカルIPを指定すること  192.168.11.25
-  const res = await fetch('http://10.14.2.188:8000/transcribe', {
+  const res = await fetch('http://10.14.1.42:8000/transcribe', {
     method: 'POST',
     body: formData,
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-
+  if (!res.ok) {
+    throw new Error(`HTTP error! status: ${res.status}`);
+  }
   const data: TranscriptionResponse = await res.json();
   console.log(data.text);
   console.log(data.analyze);
