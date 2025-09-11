@@ -3,6 +3,7 @@ export type RootStackParamList = {
   Home: undefined;
   Detail: undefined;
   Ble: undefined;
+  Debug: undefined;
 };
 
 export type analyzeType = {

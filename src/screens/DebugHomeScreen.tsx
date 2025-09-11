@@ -7,14 +7,14 @@ import { RootStackParamList } from '../utils/types';
 // 画面遷移するscreenにはこれを改造して使うこと
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'Home'
+  'Debug'
 >;
 
 type Props = {
   navigation: HomeScreenNavigationProp;
 };
 
-const HomeScreen: React.FC<Props> = ({ navigation }) => {
+const DebugHomeScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text>メインページ</Text>
@@ -31,7 +31,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 import { StyleSheet } from 'react-native';
 import Recorder from '../components/Recorder';
 
-export default HomeScreen;
+export default DebugHomeScreen;
 
 const styles = StyleSheet.create({
   container: {
