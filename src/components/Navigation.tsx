@@ -15,8 +15,9 @@ export const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const navItems: { id: keyof RootStackParamList; label: string }[] = [
     { id: 'Home', label: 'ホーム' },
-    { id: 'Detail', label: '詳細' },
-    { id: 'Ble', label: 'BLE' },
+    { id: 'Mic', label: 'マイク' },
+    // { id: 'Detail', label: '詳細' },
+    // { id: 'Ble', label: 'BLE' },
     { id: 'Debug', label: 'デバッグ' },
   ];
 

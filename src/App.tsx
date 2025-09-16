@@ -7,6 +7,7 @@ import DebugHomeScreen from './screens/DebugHomeScreen';
 import DetailScreen from './screens/DetailScreen';
 import BleScreen from './screens/BleScanner';
 import HomeScreen from './screens/HomeScreen';
+import { MicScreen } from './screens/MicScreen';
 
 // Stack Navigatorの型を指定
 // 新しい画面を追加する時は、RootStackParamListに追加すること
@@ -21,6 +22,11 @@ const App: React.FC = () => {
           name="Home"
           component={HomeScreen}
           options={{ title: 'メインページ' }}
+        />
+        <Stack.Screen
+          name="Mic"
+          component={MicScreen}
+          options={{ title: 'Micページ' }}
         />
         <Stack.Screen
           name="Debug"
