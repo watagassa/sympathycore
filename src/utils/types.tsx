@@ -1,6 +1,7 @@
 // 各画面に渡すパラメータの型を定義
 export type RootStackParamList = {
   Home: undefined;
+  Mic: undefined;
   Detail: undefined;
   Ble: undefined;
   Debug: undefined;
