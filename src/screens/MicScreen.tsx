@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../utils/types';
@@ -6,58 +6,16 @@ import { ScreenLayout } from '../components/ScreenLayout';
 import { initialAnalysis } from '../test/mock-emotions';
 import { ConnectionModal } from '../components/ConnectionModal';
 import { Wifi } from 'lucide-react-native';
+import { MicRecorder } from '../components/MicRecorder';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList>;
 };
 
 export const MicScreen: React.FC<Props> = ({ navigation }) => {
-  const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState(initialAnalysis);
-
-  // 録音時間のカウント
-  useEffect(() => {
-    let interval: number | undefined;
-    if (isRecording) {
-      interval = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    } else if (interval !== undefined) {
-      clearInterval(interval);
-    }
-    return () => {
-      if (interval !== undefined) {
-        clearInterval(interval);
-      }
-    };
-  }, [isRecording]);
-
-  const handleRecord = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      setIsAnalyzing(true);
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setLastAnalysis({
-          emotion: ['Happy', 'Calm', 'Excited', 'Neutral'][
-            Math.floor(Math.random() * 4)
-          ],
-          confidence: Math.floor(Math.random() * 30) + 70,
-          timestamp: new Date().toLocaleTimeString(),
-        });
-      }, 2000);
-    } else {
-      setIsRecording(true);
-      setRecordingTime(0);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   return (
     <ScreenLayout activeScreen="Mic" navigation={navigation}>
@@ -76,34 +34,13 @@ export const MicScreen: React.FC<Props> = ({ navigation }) => {
           <Wifi color="white" size={32} />
         </TouchableOpacity>
       </View>
-
-      {/* 録音操作 */}
-      <View style={styles.recordingControl}>
-        <TouchableOpacity
-          onPress={handleRecord}
-          disabled={isAnalyzing}
-          style={[
-            styles.recordButton,
-            isRecording
-              ? styles.recordButtonActive
-              : styles.recordButtonInactive,
-            isAnalyzing && styles.recordButtonDisabled,
-          ]}
-        >
-          <Text style={styles.buttonText}>
-            {isAnalyzing ? '分析中...' : isRecording ? '録音停止' : '録音開始'}
-          </Text>
-        </TouchableOpacity>
-
-        {isRecording && (
-          <View style={styles.recordingTimeContainer}>
-            <Text style={styles.recordingTimeText}>
-              {formatTime(recordingTime)}
-            </Text>
-            <Text style={styles.recordingTimeLabel}>録音時間</Text>
-          </View>
-        )}
-      </View>
+      {/* 分析結果の挿入はあとでこのコンポーネントに追記する */}
+      {/* 何秒かに一度音声ファイルを送るように変更が必要 */}
+      <MicRecorder
+        isAnalyzing={isAnalyzing}
+        setIsAnalyzing={setIsAnalyzing}
+        setLastAnalysis={setLastAnalysis}
+      />
 
       {/* 最新分析結果 */}
       <View style={styles.card}>
