@@ -12,7 +12,7 @@ export type RootStackParamList = {
 export type analyzeType = {
   sentiment: 'positive' | 'neutral' | 'negative';
   score: number; // 0.0 - 1.0
-  tsv: [number, number, number]; // [time, hue, saturation]
+  ths: [number, number, number]; // [time, hue, saturation]
 };
 
 export type TranscriptionResponse = {

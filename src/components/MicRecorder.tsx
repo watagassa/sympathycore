@@ -17,49 +17,54 @@ interface MicRecorderProps {
     }>
   >;
   ble: useBleType;
-  setShowConnectionModal: React.Dispatch<React.SetStateAction<boolean>>; // 追加
+  setShowConnectionModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const MicRecorder: React.FC<MicRecorderProps> = ({
   isAnalyzing,
-  // setIsAnalyzing,
-  // setLastAnalysis,
   ble,
   setShowConnectionModal,
 }: MicRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
 
-  const audioPath = `${RNFS.DocumentDirectoryPath}/sound.mp4`;
+  const audioPath = `${RNFS.DocumentDirectoryPath}/sound.wav`;
 
   useEffect(() => {
     let countInterval: number | null = null;
+
     if (isRecording) {
-      let elapsed = 0; // 録音秒数カウント用
+      let elapsed = 0;
 
       countInterval = setInterval(async () => {
         elapsed += 1;
-        setRecordingTime(elapsed); // 1秒ごとの録音時間更新
+        setRecordingTime(elapsed);
 
-        // 5秒ごとに transcribeAudioFile を実行
-        if (elapsed % 5 === 0) {
+        if (elapsed % 10 === 0) {
           try {
-            const transcribeData = await transcribeAudioFile();
-            console.log('Partial Transcription:', transcribeData.text);
-            ble.setFloatData({
-              val1: transcribeData.analyze.tsv[0],
-              val2: transcribeData.analyze.tsv[1],
-              val3: transcribeData.analyze.tsv[2],
+            // 一時ファイルにコピーして安全に送信
+            const tempPath = `${RNFS.DocumentDirectoryPath}/temp_sound.wav`;
+            await RNFS.copyFile(audioPath, tempPath);
+
+            const transcribeData = await transcribeAudioFile({
+              filePath: tempPath,
             });
-            // ここで感情分析の結果を処理し、UIに反映する
-            // 例: setIsAnalyzing(false);
-            // 必要なら setLastAnalysis を更新
+            console.log('Partial Transcription:', transcribeData.text);
+
+            ble.setFloatData({
+              val1: transcribeData.analyze.ths[0],
+              val2: transcribeData.analyze.ths[1],
+              val3: transcribeData.analyze.ths[2],
+            });
+
+            // 必要に応じて UI 更新
           } catch (e) {
-            console.error(e);
+            console.error('Partial transcription error:', e);
           }
         }
       }, 1000);
     }
+
     return () => {
       if (countInterval) clearInterval(countInterval);
     };
@@ -80,8 +85,8 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
     }
 
     try {
-      const uri = await Sound.startRecorder(audioPath);
-      console.log('録音開始: ', uri);
+      await Sound.startRecorder(audioPath);
+      console.log('録音開始: ', audioPath);
       setIsRecording(true);
     } catch (e) {
       console.error(e);
@@ -93,9 +98,11 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
       const result = await Sound.stopRecorder();
       setIsRecording(false);
       console.log('録音終了: ', result);
-      const soundText = await transcribeAudioFile();
-      console.log('Transcription: ', soundText);
       setRecordingTime(0);
+
+      // 最後の解析
+      const transcribeData = await transcribeAudioFile({ filePath: audioPath });
+      console.log('Final Transcription:', transcribeData.text);
     } catch (e) {
       console.error(e);
     }
@@ -114,10 +121,10 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
       <TouchableOpacity
         onPress={() => {
           if (!ble.connectedDevice) {
-            setShowConnectionModal(true); // モーダル表示
-            return; // handleRecord を実行しない
+            setShowConnectionModal(true);
+            return;
           }
-          handleRecord(); // 接続済みなら録音処理
+          handleRecord();
         }}
         disabled={isAnalyzing}
         style={[
