@@ -13,6 +13,8 @@ const BleScreen: React.FC = () => {
     startScan,
     connectToDevice,
     disconnect,
+    // floatData,      // ここを返す
+    // setFloatData,   // これで他のファイルから更新可能
   } = useBle();
 
   return (
