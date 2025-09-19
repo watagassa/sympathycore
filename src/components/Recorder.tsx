@@ -7,6 +7,7 @@ import { checkPermissions } from './checkPermissions';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
 import { AudioFilePicker } from './AudioFilePicker';
+import { saveEmotion } from '../utils/sqlite/sqlite';
 
 const audioRecorderPlayer = AudioRecorderPlayer;
 
@@ -88,6 +89,10 @@ const Recorder = () => {
           // 保存完了したファイルのパスを state に保存
           setSavedPath(path);
         }}
+      />
+      <Button
+        title="ためしにsqliteに保存"
+        onPress={() => saveEmotion(0.75, 'negative')}
       />
       <Button title="指定ファイルを再生" onPress={playPickFile} />
     </View>
