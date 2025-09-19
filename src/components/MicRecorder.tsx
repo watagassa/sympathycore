@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import RNFS from 'react-native-fs';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
-
-const audioRecorderPlayer = AudioRecorderPlayer;
+import Sound from 'react-native-nitro-sound';
 
 interface MicRecorderProps {
   isAnalyzing: boolean;
@@ -52,7 +50,7 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
     }
 
     try {
-      const uri = await audioRecorderPlayer.startRecorder(audioPath);
+      const uri = await Sound.startRecorder(audioPath);
       console.log('録音開始: ', uri);
       setIsRecording(true);
     } catch (e) {
@@ -62,11 +60,11 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
 
   const stopRecording = async () => {
     try {
-      const result = await audioRecorderPlayer.stopRecorder();
+      const result = await Sound.stopRecorder();
+      setIsRecording(false);
       console.log('録音終了: ', result);
       const soundText = await transcribeAudioFile();
       console.log('Transcription: ', soundText);
-      setIsRecording(false);
       setRecordingTime(0);
     } catch (e) {
       console.error(e);
