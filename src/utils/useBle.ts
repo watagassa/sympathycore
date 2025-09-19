@@ -12,7 +12,7 @@ export function useBle() {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [scanning, setScanning] = useState(false);
 
- const floatData = useRef({ val1: 5.0, val2: 0.1, val3: 1.0 });
+  const [floatData, setFloatData] = useState({ val1: 5.0, val2: 0.1, val3: 1.0 });
   const sendIntervalId = useRef<number | null>(null);
 
   const CUSTOM_SERVICE_UUID = "442f1570-8a00-9a28-cbe1-e1d4212d53eb";
@@ -68,9 +68,9 @@ export function useBle() {
     try {
       const buffer = new ArrayBuffer(12);
       const view = new DataView(buffer);
-      view.setFloat32(0, floatData.current.val1, true);
-      view.setFloat32(4, floatData.current.val2, true);
-      view.setFloat32(8, floatData.current.val3, true);
+      view.setFloat32(0, floatData.val1, true);
+      view.setFloat32(4, floatData.val2, true);
+      view.setFloat32(8, floatData.val3, true);
 
       const uint8Array = new Uint8Array(buffer);
       const base64Data = base64.fromByteArray(uint8Array);
@@ -81,7 +81,7 @@ export function useBle() {
           CUSTOM_CHAR_UUID,
           base64Data
         );
-        console.log("Sent float data (withResponse):", floatData.current);
+        console.log("Sent float data (withResponse):", floatData);
       } catch (e) {
         console.warn("withResponse失敗、withoutResponseで送信:", e);
         await device.writeCharacteristicWithoutResponseForService(
@@ -89,12 +89,12 @@ export function useBle() {
           CUSTOM_CHAR_UUID,
           base64Data
         );
-        console.log("Sent float data (withoutResponse):", floatData.current);
+        console.log("Sent float data (withoutResponse):", floatData);
       }
 
       // val2を循環更新
-      floatData.current.val2 += 0.1;
-      if (floatData.current.val2 > 1.0) floatData.current.val2 = 0.0;
+      floatData.val2 += 0.1;
+      if (floatData.val2 > 1.0) floatData.val2 = 0.0;
     } catch (err) {
       console.error("送信エラー:", err);
     }
@@ -146,5 +146,7 @@ export function useBle() {
     startScan,
     connectToDevice,
     disconnect,
+    floatData,      // ここを返す
+    setFloatData,   // これで他のファイルから更新可能
   };
 }
