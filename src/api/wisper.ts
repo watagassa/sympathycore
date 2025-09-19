@@ -34,5 +34,5 @@ export default async function transcribeAudioFile(props?: Props) {
   console.log(data.analyze);
   // api使用時にDB保存
   await saveEmotion(data.analyze.score, data.analyze.sentiment);
-  return data.text;
+  return data;
 }

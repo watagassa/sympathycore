@@ -4,6 +4,7 @@ import RNFS from 'react-native-fs';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
 import Sound from 'react-native-nitro-sound';
+import { useBleType } from '../utils/types';
 
 interface MicRecorderProps {
   isAnalyzing: boolean;
@@ -15,25 +16,54 @@ interface MicRecorderProps {
       timestamp: string;
     }>
   >;
+  ble: useBleType;
+  setShowConnectionModal: React.Dispatch<React.SetStateAction<boolean>>; // 追加
 }
 
-export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
+export const MicRecorder: React.FC<MicRecorderProps> = ({
+  isAnalyzing,
+  // setIsAnalyzing,
+  // setLastAnalysis,
+  ble,
+  setShowConnectionModal,
+}: MicRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
 
   const audioPath = `${RNFS.DocumentDirectoryPath}/sound.mp4`;
 
-  // 録音時間のカウント
   useEffect(() => {
-    let interval: number | null = null;
+    let countInterval: number | null = null;
     if (isRecording) {
-      interval = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    } else if (interval) {
-      clearInterval(interval);
+      let elapsed = 0; // 録音秒数カウント用
+
+      countInterval = setInterval(async () => {
+        elapsed += 1;
+        setRecordingTime(elapsed); // 1秒ごとの録音時間更新
+
+        // 5秒ごとに transcribeAudioFile を実行
+        if (elapsed % 5 === 0) {
+          try {
+            const transcribeData = await transcribeAudioFile();
+            console.log('Partial Transcription:', transcribeData.text);
+            ble.setFloatData({
+              val1: transcribeData.analyze.tsv[0],
+              val2: transcribeData.analyze.tsv[1],
+              val3: transcribeData.analyze.tsv[2],
+            });
+            // ここで感情分析の結果を処理し、UIに反映する
+            // 例: setIsAnalyzing(false);
+            // 必要なら setLastAnalysis を更新
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }, 1000);
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (countInterval) clearInterval(countInterval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRecording]);
 
   const formatTime = (seconds: number) => {
@@ -82,7 +112,13 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
   return (
     <View style={styles.recordingControl}>
       <TouchableOpacity
-        onPress={handleRecord}
+        onPress={() => {
+          if (!ble.connectedDevice) {
+            setShowConnectionModal(true); // モーダル表示
+            return; // handleRecord を実行しない
+          }
+          handleRecord(); // 接続済みなら録音処理
+        }}
         disabled={isAnalyzing}
         style={[
           styles.recordButton,
@@ -91,7 +127,13 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
         ]}
       >
         <Text style={styles.buttonText}>
-          {isAnalyzing ? '分析中...' : isRecording ? '録音停止' : '録音開始'}
+          {ble.connectedDevice
+            ? isAnalyzing
+              ? '分析中...'
+              : isRecording
+              ? '録音停止'
+              : '録音開始'
+            : '未接続'}
         </Text>
       </TouchableOpacity>
 
