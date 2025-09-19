@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import RNFS from 'react-native-fs'; // ← 追加
 
+import RNFS from 'react-native-fs'; // ← 追加
+import Sound from 'react-native-nitro-sound';
 import { checkPermissions } from './checkPermissions';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
 import { AudioFilePicker } from './AudioFilePicker';
 import { saveEmotion } from '../utils/sqlite/sqlite';
-
-const audioRecorderPlayer = AudioRecorderPlayer;
 
 const Recorder = () => {
   const [recording, setRecording] = useState(false);
@@ -28,7 +26,7 @@ const Recorder = () => {
     }
 
     try {
-      const uri = await audioRecorderPlayer.startRecorder(audioPath);
+      const uri = await Sound.startRecorder(audioPath);
       console.log('録音開始: ', uri);
       setFilePath(uri);
       setRecording(true);
@@ -40,7 +38,7 @@ const Recorder = () => {
   // 録音停止
   const stopRecording = async () => {
     try {
-      const result = await audioRecorderPlayer.stopRecorder();
+      const result = await Sound.stopRecorder();
       console.log('録音終了: ', result);
       setRecording(false);
     } catch (e) {
@@ -54,7 +52,7 @@ const Recorder = () => {
       console.log('録音ファイルがありません');
       return;
     }
-    await audioRecorderPlayer.startPlayer(filePath);
+    await Sound.startPlayer(filePath);
     console.log('再生開始: ', filePath);
     const soundText = await transcribeAudioFile();
     console.log('Transcription: ', soundText);
@@ -65,7 +63,7 @@ const Recorder = () => {
       console.log('指定ファイルがありません');
       return;
     }
-    await audioRecorderPlayer.startPlayer(savedPath);
+    await Sound.startPlayer(savedPath);
     console.log('再生開始: ', savedPath);
     const soundText = await transcribeAudioFile({ filePath: savedPath });
     console.log('Transcription: ', soundText);
