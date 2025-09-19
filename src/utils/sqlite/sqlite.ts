@@ -122,3 +122,23 @@ export const getEmotionsFromNDaysAgo = (
     });
   });
 };
+
+export const deleteAllEmotions = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'DELETE FROM emotions;',
+        [],
+        () => {
+          console.log('Deleted all emotions');
+          resolve();
+        },
+        (_, error) => {
+          console.error('Delete all error:', error);
+          reject(error);
+          return false;
+        },
+      );
+    });
+  });
+};
