@@ -23,6 +23,7 @@ interface MicRecorderProps {
 
 export const MicRecorder: React.FC<MicRecorderProps> = ({
   isAnalyzing,
+  setIsAnalyzing,
   ble,
   setShowConnectionModal,
 }: MicRecorderProps) => {
@@ -57,10 +58,12 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
             console.log('Partial recording stopped:', stoppedPath);
 
             // そのファイルを解析
+            setIsAnalyzing(true);
             const transcribeData = await transcribeAudioFile({
               filePath: stoppedPath,
             });
-
+            setIsAnalyzing(false);
+            console.log('bleの値・・・・：', transcribeData.analyze.ths);
             ble.setFloatData({
               val1: transcribeData.analyze.ths[0],
               val2: transcribeData.analyze.ths[1],
@@ -71,10 +74,11 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
             pathIndexRef.current += 1;
             const nextPath = `${RNFS.DocumentDirectoryPath}/sound${pathIndexRef.current}.mp4`;
             audioPathRef.current = nextPath;
-
-            // 録音再開
-            await Sound.startRecorder(nextPath);
-            isRecordingRef.current = true;
+            if (isRecording) {
+              // 録音再開
+              await Sound.startRecorder(nextPath);
+              isRecordingRef.current = true;
+            }
           } catch (e) {
             console.error('Error in partial process:', e);
           }
@@ -82,7 +86,7 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
       };
 
       countInterval = setInterval(() => {
-        void handleTick();
+        handleTick();
       }, 1000);
     }
 
@@ -90,6 +94,10 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
       if (countInterval) clearInterval(countInterval);
     };
   }, [isRecording]); // UI のトグルで start/stop
+
+  useEffect(() => {
+    console.log('ble.floatData changed:', ble.floatData);
+  }, [ble.floatData]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -118,26 +126,46 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
     try {
       if (isRecordingRef.current) {
         const result = await Sound.stopRecorder();
-        isRecordingRef.current = false;
-        setIsRecording(false);
         console.log('録音終了: ', result);
       }
-      // 最後の解析
-      // const transcribeData = await transcribeAudioFile({
-      //   filePath: audioPathRef.current,
-      // });
-      // console.log('Final Transcription:', transcribeData.text);
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      setRecordingTime(0);
     } catch (e) {
       console.error(e);
     }
   };
 
   const handleRecord = async () => {
-    if (isRecordingRef.current) {
+    if (isRecording) {
       await stopRecording();
     } else {
       await startRecording();
     }
+  };
+
+  // const buttonUI = () => {
+  //   // if (!ble.connectedDevice) {
+  //   //   return '未接続';
+  //   // } else
+  //   if (isAnalyzing) {
+  //     return '分析中...';
+  //   } else if (isRecording) {
+  //     return '録音中...';
+  //   } else {
+  //     return '録音開始';
+  //   }
+  // };
+  const buttonUI = () => {
+    if (!ble.connectedDevice) {
+      return '未接続';
+    } else if (isRecording) {
+      if (isAnalyzing) {
+        return '分析中...';
+      }
+      return '録音中...';
+    }
+    return '録音開始';
   };
 
   return (
@@ -148,24 +176,20 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
             setShowConnectionModal(true);
             return;
           }
-          void handleRecord();
+          console.log('Record button pressed');
+          console.log('isAnalyzing:', isAnalyzing);
+          console.log('isRecording:', isRecording);
+          console.log('ble.connectedDevice:', ble.connectedDevice);
+          console.log('isRecordingRef.current:', isRecordingRef.current);
+          handleRecord();
         }}
-        disabled={isAnalyzing}
         style={[
           styles.recordButton,
           isRecording ? styles.recordButtonActive : styles.recordButtonInactive,
-          isAnalyzing && styles.recordButtonDisabled,
+          // isAnalyzing && styles.recordButtonDisabled,
         ]}
       >
-        <Text style={styles.buttonText}>
-          {ble.connectedDevice
-            ? isAnalyzing
-              ? '分析中...'
-              : isRecording
-              ? '録音停止'
-              : '録音開始'
-            : '未接続'}
-        </Text>
+        <Text style={styles.buttonText}>{buttonUI()}</Text>
       </TouchableOpacity>
 
       {isRecording && (
