@@ -10,16 +10,16 @@ export default async function transcribeAudioFile(props?: Props) {
   if (props?.filePath) {
     filePath = props.filePath;
   } else {
-    filePath = RNFS.DocumentDirectoryPath + '/sound.mp4';
+    filePath = RNFS.DocumentDirectoryPath + '/sound.m4a';
   }
   const formData = new FormData();
   formData.append('file', {
     uri: 'file://' + filePath,
-    type: 'video/mp4',
-    name: 'sound3.mp4',
+    type: 'video/m4a',
+    name: 'sound3.m4a',
   });
   // PCのローカルIPを指定すること  192.168.11.25
-  const res = await fetch('http://10.14.3.67:8000/transcribe', {
+  const res = await fetch('http://10.14.4.122:8000/transcribe', {
     method: 'POST',
     body: formData,
     headers: {
