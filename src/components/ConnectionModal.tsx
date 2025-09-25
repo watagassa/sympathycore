@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,56 +6,22 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-
-// モックデバイス（仮）
-const bleDevices = [
-  { id: '1', name: 'Device A', rssi: -45, status: 'disconnected' },
-  { id: '2', name: 'Device B', rssi: -60, status: 'disconnected' },
-  { id: '3', name: 'Device C', rssi: -70, status: 'connected' },
-];
+import { Device } from 'react-native-ble-plx';
+import { useBleType } from '../utils/types';
 
 interface ConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  ble: useBleType; // useBleの型を指定
 }
 
 export const ConnectionModal: React.FC<ConnectionModalProps> = ({
   isOpen,
   onClose,
+  ble,
 }) => {
-  const [isScanning, setIsScanning] = useState(false);
-  const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
-  const [devices, setDevices] = useState(bleDevices);
-
-  const handleScan = () => {
-    setIsScanning(true);
-    setTimeout(() => setIsScanning(false), 3000);
-  };
-
-  const handleConnect = (deviceId: string) => {
-    setConnectedDevice(deviceId);
-    setDevices(prev =>
-      prev.map(d =>
-        d.id === deviceId
-          ? { ...d, status: 'connected' }
-          : { ...d, status: 'disconnected' },
-      ),
-    );
-  };
-
-  const handleDisconnect = () => {
-    if (!connectedDevice) return;
-    setDevices(prev =>
-      prev.map(d =>
-        d.id === connectedDevice ? { ...d, status: 'disconnected' } : d,
-      ),
-    );
-    setConnectedDevice(null);
-  };
-
   return (
     <Modal
       animationType="slide"
@@ -92,87 +58,85 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                 <View
                   style={[
                     styles.badge,
-                    connectedDevice
+                    ble.connectedDevice
                       ? styles.badgeConnected
                       : styles.badgeDisconnected,
                   ]}
                 >
                   <Text style={styles.badgeText}>
-                    {connectedDevice ? '接続済み' : '未接続'}
+                    {ble.connectedDevice ? '接続済み' : '未接続'}
                   </Text>
                 </View>
               </View>
-              {connectedDevice && (
+              {ble.connectedDevice && (
                 <Text style={styles.connectedDeviceText}>
-                  接続中: {devices.find(d => d.id === connectedDevice)?.name}
+                  接続中: {ble.connectedDevice.name ?? ble.connectedDevice.id}
                 </Text>
               )}
             </View>
 
             {/* Scan Button */}
             <TouchableOpacity
-              onPress={handleScan}
-              disabled={isScanning}
+              onPress={ble.startScan}
+              disabled={ble.scanning}
               style={[
                 styles.scanButton,
-                isScanning && styles.scanButtonDisabled,
+                ble.scanning && styles.scanButtonDisabled,
               ]}
             >
-              {isScanning ? (
-                <View style={styles.scanButtonContent}>
-                  <ActivityIndicator color="#FFFFFF" />
-                  <Text style={styles.buttonText}>スキャン中...</Text>
-                </View>
-              ) : (
-                <Text style={styles.buttonText}>デバイススキャン</Text>
-              )}
+              <Text style={styles.buttonText}>
+                {ble.scanning ? 'スキャン中...' : 'デバイススキャン'}
+              </Text>
             </TouchableOpacity>
 
             {/* Device List */}
             <View style={styles.deviceListContainer}>
               <Text style={styles.deviceListTitle}>検出されたデバイス</Text>
               <ScrollView style={styles.deviceList}>
-                {devices.map(device => (
-                  <View key={device.id} style={styles.deviceItem}>
-                    <View style={styles.deviceInfo}>
-                      <Text style={styles.deviceName}>{device.name}</Text>
-                      <Text style={styles.deviceRssi}>
-                        RSSI: {device.rssi} dBm
-                      </Text>
-                    </View>
-                    <View style={styles.deviceActions}>
-                      <View
-                        style={[
-                          styles.badge,
-                          device.status === 'connected'
-                            ? styles.badgeConnected
-                            : styles.badgeDisconnected,
-                        ]}
-                      >
-                        <Text style={styles.badgeText}>
-                          {device.status === 'connected'
-                            ? '接続中'
-                            : '利用可能'}
+                {ble.devices.map((device: Device) => {
+                  const isConnected = ble.connectedDevice?.id === device.id;
+                  return (
+                    <View key={device.id} style={styles.deviceItem}>
+                      <View style={styles.deviceInfo}>
+                        <Text style={styles.deviceName}>
+                          {device.name ?? '不明なデバイス'}
+                        </Text>
+                        <Text style={styles.deviceRssi}>
+                          RSSI: {device.rssi ?? '-'}
                         </Text>
                       </View>
-                      {device.status === 'connected' ? (
-                        <TouchableOpacity
-                          onPress={handleDisconnect}
-                          style={styles.disconnectButton}
+                      <View style={styles.deviceActions}>
+                        <View
+                          style={[
+                            styles.badge,
+                            isConnected
+                              ? styles.badgeConnected
+                              : styles.badgeDisconnected,
+                          ]}
                         >
-                          <Text style={styles.smallButtonText}>切断</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => handleConnect(device.id)}
-                          style={styles.connectButton}
-                        >
-                          <Text style={styles.smallButtonText}>接続</Text>
-                        </TouchableOpacity>
-                      )}
+                          <Text style={styles.badgeText}>
+                            {isConnected ? '接続中' : '利用可能'}
+                          </Text>
+                        </View>
+                        {isConnected ? (
+                          <TouchableOpacity
+                            onPress={ble.disconnect}
+                            style={styles.disconnectButton}
+                          >
+                            <Text style={styles.smallButtonText}>切断</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={() => ble.connectToDevice(device)}
+                            style={styles.connectButton}
+                          >
+                            <Text style={styles.smallButtonText}>接続</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </ScrollView>
             </View>
           </View>
@@ -187,14 +151,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(27,30,39,0.7)', // #1B1E27 半透明
     padding: 16,
   },
   card: {
     width: '100%',
     maxWidth: 400,
     borderRadius: 8,
-    backgroundColor: '#141F79',
+    backgroundColor: '#252A36', // セカンダリ背景
   },
   cardContent: { padding: 24 },
   header: {
@@ -203,7 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: 'white' },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF' },
   closeButton: {
     width: 32,
     height: 32,
@@ -217,34 +181,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  statusLabel: { color: '#B0B0B0' },
-  connectedDeviceText: { fontSize: 14, color: 'white' },
+  statusLabel: { color: '#C7CCD6' },
+  connectedDeviceText: { fontSize: 14, color: '#FFFFFF' },
   badge: { borderRadius: 16, paddingHorizontal: 8, paddingVertical: 4 },
-  badgeText: { color: 'white', fontSize: 12 },
-  badgeConnected: { backgroundColor: '#4A90E2' },
-  badgeDisconnected: { backgroundColor: '#B0B0B0' },
+  badgeText: { color: '#FFFFFF', fontSize: 12 },
+  badgeConnected: { backgroundColor: '#00FFE0' }, // ネオングリーン光
+  badgeDisconnected: { backgroundColor: '#C7CCD6' }, // 淡いグレー
   scanButton: {
     width: '100%',
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#FFB347',
+    backgroundColor: '#3A86FF', // 深海ブルー発光
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   scanButtonDisabled: { opacity: 0.7 },
-  scanButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  buttonText: { color: 'white', fontWeight: '600' },
+  buttonText: { color: '#FFFFFF', fontWeight: '600' },
   deviceListContainer: { maxHeight: 192 },
   deviceListTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'white',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   deviceList: { flexGrow: 0 },
   deviceItem: {
-    backgroundColor: '#3A3F4A',
+    backgroundColor: '#252A36', // カード内背景に合わせる
     borderRadius: 8,
     padding: 12,
     flexDirection: 'row',
@@ -253,17 +216,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   deviceInfo: { flex: 1 },
-  deviceName: { color: 'white', fontWeight: '500', fontSize: 14 },
-  deviceRssi: { color: '#B0B0B0', fontSize: 12 },
+  deviceName: { color: '#FFFFFF', fontWeight: '500', fontSize: 14 },
+  deviceRssi: { color: '#C7CCD6', fontSize: 12 },
   deviceActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  smallButtonText: { color: 'white', fontSize: 12 },
+  smallButtonText: { color: '#FFFFFF', fontSize: 12 },
   disconnectButton: {
     height: 24,
     paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 4,
-    backgroundColor: '#FF6961',
+    backgroundColor: '#FF4FA2', // ピンク系クラゲ光
   },
   connectButton: {
     height: 24,
@@ -271,6 +234,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 4,
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#3A86FF', // 深海ブルー発光
   },
 });

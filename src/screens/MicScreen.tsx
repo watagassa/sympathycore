@@ -7,6 +7,7 @@ import { initialAnalysis } from '../test/mock-emotions';
 import { ConnectionModal } from '../components/ConnectionModal';
 import { Wifi } from 'lucide-react-native';
 import { MicRecorder } from '../components/MicRecorder';
+import { useBle } from '../utils/useBle';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList>;
@@ -16,6 +17,7 @@ export const MicScreen: React.FC<Props> = ({ navigation }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState(initialAnalysis);
+  const ble = useBle();
 
   return (
     <ScreenLayout activeScreen="Mic" navigation={navigation}>
@@ -40,6 +42,8 @@ export const MicScreen: React.FC<Props> = ({ navigation }) => {
         isAnalyzing={isAnalyzing}
         setIsAnalyzing={setIsAnalyzing}
         setLastAnalysis={setLastAnalysis}
+        ble={ble}
+        setShowConnectionModal={setShowConnectionModal}
       />
 
       {/* 最新分析結果 */}
@@ -57,6 +61,7 @@ export const MicScreen: React.FC<Props> = ({ navigation }) => {
       <ConnectionModal
         isOpen={showConnectionModal}
         onClose={() => setShowConnectionModal(false)}
+        ble={ble}
       />
     </ScreenLayout>
   );

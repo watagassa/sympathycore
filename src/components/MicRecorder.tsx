@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import RNFS from 'react-native-fs';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
 import Sound from 'react-native-nitro-sound';
+import { useBleType } from '../utils/types';
 
 interface MicRecorderProps {
   isAnalyzing: boolean;
@@ -15,26 +17,79 @@ interface MicRecorderProps {
       timestamp: string;
     }>
   >;
+  ble: useBleType;
+  setShowConnectionModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
-  const [isRecording, setIsRecording] = useState(false);
+export const MicRecorder: React.FC<MicRecorderProps> = ({
+  isAnalyzing,
+  ble,
+  setShowConnectionModal,
+}: MicRecorderProps) => {
+  const isRecordingRef = useRef(false);
+  const pathIndexRef = useRef(0);
+  const audioPathRef = useRef(
+    `${RNFS.DocumentDirectoryPath}/sound${pathIndexRef.current}.mp4`,
+  );
+
+  const [isRecording, setIsRecording] = useState(false); // UI 表示用
   const [recordingTime, setRecordingTime] = useState(0);
 
-  const audioPath = `${RNFS.DocumentDirectoryPath}/sound.mp4`;
-
-  // 録音時間のカウント
   useEffect(() => {
-    let interval: number | null = null;
-    if (isRecording) {
-      interval = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    } else if (interval) {
-      clearInterval(interval);
+    let countInterval: number | null = null;
+
+    if (isRecordingRef.current) {
+      let elapsed = 0;
+
+      const handleTick = async () => {
+        elapsed += 1;
+        setRecordingTime(elapsed);
+
+        if (elapsed % 10 === 0) {
+          try {
+            // 直前の録音をストップしてファイルを確定
+            const stoppedPath = audioPathRef.current;
+            console.log('isRecordingRef.current', isRecordingRef.current);
+            if (isRecordingRef.current) {
+              await Sound.stopRecorder();
+            }
+            isRecordingRef.current = false;
+            console.log('Partial recording stopped:', stoppedPath);
+
+            // そのファイルを解析
+            const transcribeData = await transcribeAudioFile({
+              filePath: stoppedPath,
+            });
+
+            ble.setFloatData({
+              val1: transcribeData.analyze.ths[0],
+              val2: transcribeData.analyze.ths[1],
+              val3: transcribeData.analyze.ths[2],
+            });
+
+            // 次の録音用のファイルパスを用意
+            pathIndexRef.current += 1;
+            const nextPath = `${RNFS.DocumentDirectoryPath}/sound${pathIndexRef.current}.mp4`;
+            audioPathRef.current = nextPath;
+
+            // 録音再開
+            await Sound.startRecorder(nextPath);
+            isRecordingRef.current = true;
+          } catch (e) {
+            console.error('Error in partial process:', e);
+          }
+        }
+      };
+
+      countInterval = setInterval(() => {
+        void handleTick();
+      }, 1000);
     }
+
     return () => {
-      if (interval) clearInterval(interval);
+      if (countInterval) clearInterval(countInterval);
     };
-  }, [isRecording]);
+  }, [isRecording]); // UI のトグルで start/stop
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -50,8 +105,9 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
     }
 
     try {
-      const uri = await Sound.startRecorder(audioPath);
-      console.log('録音開始: ', uri);
+      await Sound.startRecorder(audioPathRef.current);
+      console.log('録音開始: ', audioPathRef.current);
+      isRecordingRef.current = true;
       setIsRecording(true);
     } catch (e) {
       console.error(e);
@@ -60,19 +116,24 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
 
   const stopRecording = async () => {
     try {
-      const result = await Sound.stopRecorder();
-      setIsRecording(false);
-      console.log('録音終了: ', result);
-      const soundText = await transcribeAudioFile();
-      console.log('Transcription: ', soundText);
-      setRecordingTime(0);
+      if (isRecordingRef.current) {
+        const result = await Sound.stopRecorder();
+        isRecordingRef.current = false;
+        setIsRecording(false);
+        console.log('録音終了: ', result);
+      }
+      // 最後の解析
+      // const transcribeData = await transcribeAudioFile({
+      //   filePath: audioPathRef.current,
+      // });
+      // console.log('Final Transcription:', transcribeData.text);
     } catch (e) {
       console.error(e);
     }
   };
 
   const handleRecord = async () => {
-    if (isRecording) {
+    if (isRecordingRef.current) {
       await stopRecording();
     } else {
       await startRecording();
@@ -82,7 +143,13 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
   return (
     <View style={styles.recordingControl}>
       <TouchableOpacity
-        onPress={handleRecord}
+        onPress={() => {
+          if (!ble.connectedDevice) {
+            setShowConnectionModal(true);
+            return;
+          }
+          void handleRecord();
+        }}
         disabled={isAnalyzing}
         style={[
           styles.recordButton,
@@ -91,7 +158,13 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({ isAnalyzing }) => {
         ]}
       >
         <Text style={styles.buttonText}>
-          {isAnalyzing ? '分析中...' : isRecording ? '録音停止' : '録音開始'}
+          {ble.connectedDevice
+            ? isAnalyzing
+              ? '分析中...'
+              : isRecording
+              ? '録音停止'
+              : '録音開始'
+            : '未接続'}
         </Text>
       </TouchableOpacity>
 
