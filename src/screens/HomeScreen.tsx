@@ -32,7 +32,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     // 感情種類ごとの件数を集計
     const countMap: Record<string, number> = {};
     emotions.forEach(e => {
-      countMap[e.emotion_type] = (countMap[e.emotion_type] || 0) + 1;
+      countMap[e.sentiment] = (countMap[e.sentiment] || 0) + 1;
     });
 
     const data = Object.entries(countMap).map(([emotion, count], idx) => ({
@@ -67,7 +67,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <PieChart
               data={pieData}
               width={screenWidth - 32}
-              height={300}
+              height={200}
               chartConfig={{
                 color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
               }}

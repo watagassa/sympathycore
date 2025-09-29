@@ -10,7 +10,7 @@ export type RootStackParamList = {
 };
 
 export type analyzeType = {
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: 'happy' | 'sad' | 'angry' | 'fear' | 'hate';
   score: number; // 0.0 - 1.0
   ths: [number, number, number]; // [time, hue, saturation]
 };
@@ -39,4 +39,12 @@ export type useBleType = {
       val3: number;
     }>
   >;
+};
+
+export type Analysis = {
+  sentiment: string;
+  score: number;
+  timestamp: string;
+  character_reaction?: string;
+  personality_adjustment?: string;
 };

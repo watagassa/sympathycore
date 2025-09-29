@@ -1,22 +1,24 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+} from 'react-native';
 import RNFS from 'react-native-fs';
 import { requestMicPermission } from '../utils/permission';
 import transcribeAudioFile from '../api/wisper';
 import Sound from 'react-native-nitro-sound';
-import { useBleType } from '../utils/types';
+import { Analysis, useBleType } from '../utils/types';
+import characterReactions from '../api/character_reactions';
+import { getLatestEmotion } from '../utils/sqlite/sqlite';
 
 interface MicRecorderProps {
   isAnalyzing: boolean;
   setIsAnalyzing: React.Dispatch<React.SetStateAction<boolean>>;
-  setLastAnalysis: React.Dispatch<
-    React.SetStateAction<{
-      emotion: string;
-      confidence: number;
-      timestamp: string;
-    }>
-  >;
+  setLastAnalysis: React.Dispatch<Analysis>;
   ble: useBleType;
   setShowConnectionModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -24,6 +26,7 @@ interface MicRecorderProps {
 export const MicRecorder: React.FC<MicRecorderProps> = ({
   isAnalyzing,
   setIsAnalyzing,
+  setLastAnalysis,
   ble,
   setShowConnectionModal,
 }: MicRecorderProps) => {
@@ -35,65 +38,100 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
 
   const [isRecording, setIsRecording] = useState(false); // UI 表示用
   const [recordingTime, setRecordingTime] = useState(0);
-
+  const [mode, setMode] = useState('transcribe'); // 'transcribe' or 'character_reactions'
+  const [backgroundSetting, setBackgroundSetting] = useState(''); // テキストボックスの内容
   useEffect(() => {
-    let countInterval: number | null = null;
+    if (!isRecordingRef.current) return;
 
-    if (isRecordingRef.current) {
-      let elapsed = 0;
+    let elapsed = 0; // 10秒判定用
+    let timeCount = 0; // 録音時間表示用
+    let isProcessing = false; // 解析中の重複防止
 
-      const handleTick = async () => {
-        elapsed += 1;
-        setRecordingTime(elapsed);
+    const tick = async () => {
+      if (!isRecordingRef.current) return;
+      elapsed += 1;
+      timeCount += 1;
+      setRecordingTime(timeCount);
 
-        if (elapsed % 10 === 0) {
-          try {
-            // 直前の録音をストップしてファイルを確定
-            const stoppedPath = audioPathRef.current;
-            console.log('isRecordingRef.current', isRecordingRef.current);
-            if (isRecordingRef.current) {
-              await Sound.stopRecorder();
+      if (elapsed >= 10 && !isProcessing) {
+        elapsed = 0;
+        isProcessing = true;
+
+        try {
+          const stoppedPath = audioPathRef.current;
+          await Sound.stopRecorder();
+          isRecordingRef.current = false;
+
+          setIsAnalyzing(true);
+
+          let transcribeData;
+          const exists = await RNFS.exists(stoppedPath);
+          if (exists) {
+            if (mode === 'transcribe') {
+              transcribeData = await transcribeAudioFile({
+                filePath: stoppedPath,
+              });
+            } else {
+              transcribeData = await characterReactions({
+                filePath: stoppedPath,
+                backgroundSetting,
+              });
             }
-            isRecordingRef.current = false;
-            console.log('Partial recording stopped:', stoppedPath);
+          } else {
+            transcribeData = {
+              text: '音声が短すぎて認識できませんでした。',
+              analyze: { score: 0, ths: [0, 0, 0] },
+            };
+          }
 
-            // そのファイルを解析
-            setIsAnalyzing(true);
-            const transcribeData = await transcribeAudioFile({
-              filePath: stoppedPath,
-            });
-            setIsAnalyzing(false);
-            console.log('bleの値・・・・：', transcribeData.analyze.ths);
+          setIsAnalyzing(false);
+
+          if (
+            transcribeData.text !== '音声が短すぎて認識できませんでした。' &&
+            transcribeData.analyze.score !== 0
+          ) {
             ble.setFloatData({
               val1: transcribeData.analyze.ths[0],
               val2: transcribeData.analyze.ths[1],
               val3: transcribeData.analyze.ths[2],
             });
-
-            // 次の録音用のファイルパスを用意
-            pathIndexRef.current += 1;
-            const nextPath = `${RNFS.DocumentDirectoryPath}/sound${pathIndexRef.current}.mp4`;
-            audioPathRef.current = nextPath;
-            if (isRecording) {
-              // 録音再開
-              await Sound.startRecorder(nextPath);
-              isRecordingRef.current = true;
-            }
-          } catch (e) {
-            console.error('Error in partial process:', e);
           }
+
+          pathIndexRef.current += 1;
+          const nextPath = `${RNFS.DocumentDirectoryPath}/sound${pathIndexRef.current}.mp4`;
+          audioPathRef.current = nextPath;
+
+          if (isRecording) {
+            await Sound.startRecorder(nextPath);
+            isRecordingRef.current = true;
+          }
+
+          const data = await getLatestEmotion();
+          if (data) {
+            setLastAnalysis({
+              sentiment: data.sentiment,
+              score: data.score,
+              timestamp: data.timestamp,
+            });
+          }
+        } catch (e) {
+          console.error('Error in partial process:', e);
+          setIsAnalyzing(false);
+        } finally {
+          isProcessing = false;
         }
-      };
+      }
 
-      countInterval = setInterval(() => {
-        handleTick();
-      }, 1000);
-    }
-
-    return () => {
-      if (countInterval) clearInterval(countInterval);
+      setTimeout(tick, 1000);
     };
-  }, [isRecording]); // UI のトグルで start/stop
+
+    tick();
+
+    // クリーンアップ
+    return () => {
+      isRecordingRef.current = false;
+    };
+  }, [isRecording]);
 
   useEffect(() => {
     console.log('ble.floatData changed:', ble.floatData);
@@ -134,6 +172,17 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
     } catch (e) {
       console.error(e);
     }
+    const setting = async () => {
+      const data = await getLatestEmotion();
+      if (data) {
+        setLastAnalysis({
+          sentiment: data.sentiment,
+          score: data.score,
+          timestamp: data.timestamp,
+        });
+      }
+    };
+    setting();
   };
 
   const handleRecord = async () => {
@@ -144,18 +193,6 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
     }
   };
 
-  // const buttonUI = () => {
-  //   // if (!ble.connectedDevice) {
-  //   //   return '未接続';
-  //   // } else
-  //   if (isAnalyzing) {
-  //     return '分析中...';
-  //   } else if (isRecording) {
-  //     return '録音中...';
-  //   } else {
-  //     return '録音開始';
-  //   }
-  // };
   const buttonUI = () => {
     if (!ble.connectedDevice) {
       return '未接続';
@@ -167,15 +204,27 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
     }
     return '録音開始';
   };
+  useEffect(() => {
+    if (!ble.connectedDevice) {
+      ble.setFloatData({ val1: 0, val2: 0, val3: 0 });
+      ble.disconnect();
+      stopRecording();
+    }
+  }, [ble.connectedDevice]);
+  const handleModeSwitch = () => {
+    setMode(prevMode =>
+      prevMode === 'transcribe' ? 'character_reactions' : 'transcribe',
+    );
+  };
 
   return (
     <View style={styles.recordingControl}>
       <TouchableOpacity
         onPress={() => {
-          if (!ble.connectedDevice) {
-            setShowConnectionModal(true);
-            return;
-          }
+          // if (!ble.connectedDevice) {
+          //   setShowConnectionModal(true);
+          //   return;
+          // }
           console.log('Record button pressed');
           console.log('isAnalyzing:', isAnalyzing);
           console.log('isRecording:', isRecording);
@@ -200,6 +249,38 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
           <Text style={styles.recordingTimeLabel}>録音時間</Text>
         </View>
       )}
+      <TouchableOpacity
+        disabled={isRecording}
+        onPress={handleModeSwitch}
+        // eslint-disable-next-line react-native/no-inline-styles
+        style={{
+          marginTop: 16,
+          backgroundColor: isRecording
+            ? '#95A5A6' // 押せない時のグレー
+            : mode === 'transcribe'
+            ? '#8E44AD'
+            : '#27AE60',
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderRadius: 8,
+          opacity: isRecording ? 0.6 : 1, // 見た目で「押せない」感を出す
+        }}
+      >
+        <Text style={styles.buttonText}>
+          モード切替: {mode === 'transcribe' ? '文字起こし' : 'キャラ反応'}
+        </Text>
+      </TouchableOpacity>
+      {/* テキストボックス */}
+      <TextInput
+        style={styles.textBox}
+        placeholder={`ここにキャラクターの背景設定を入力してください\n「モード切替:キャラ反応」のときに送信され、感情応対に影響します`}
+        maxLength={1000} // 最大文字数を1000に制限
+        value={backgroundSetting}
+        onChangeText={setBackgroundSetting}
+        multiline={true}
+        textAlignVertical="top"
+        editable={!isRecording} // 録音中は入力も禁止にしたい場合
+      />
     </View>
   );
 };
@@ -216,8 +297,22 @@ const styles = StyleSheet.create({
   recordButtonActive: { backgroundColor: '#FF6961' },
   recordButtonInactive: { backgroundColor: '#4A90E2' },
   recordButtonDisabled: { opacity: 0.5 },
-  buttonText: { color: 'white', fontWeight: 'bold' },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    margin: 8,
+  },
   recordingTimeContainer: { alignItems: 'center', marginTop: 12 },
   recordingTimeText: { fontSize: 24, color: 'white', fontFamily: 'monospace' },
   recordingTimeLabel: { color: '#B0B0B0', fontSize: 12 },
+  textBox: {
+    marginTop: 20,
+    width: '85%',
+    height: 300,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
+  },
 });

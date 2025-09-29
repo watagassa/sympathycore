@@ -5,8 +5,9 @@ import { IP_ADDRESS } from './address';
 
 type Props = {
   filePath?: string;
+  backgroundSetting?: string;
 };
-export default async function transcribeAudioFile(props?: Props) {
+export default async function characterReactions(props?: Props) {
   let filePath;
   if (props?.filePath) {
     filePath = props.filePath;
@@ -14,22 +15,21 @@ export default async function transcribeAudioFile(props?: Props) {
     filePath = RNFS.DocumentDirectoryPath + '/sound.m4a';
   }
   const formData = new FormData();
+  formData.append('backgroundSetting', props?.backgroundSetting || 'default');
   formData.append('file', {
     uri: 'file://' + filePath,
-    type: 'video/m4a',
+    type: 'audio/m4a',
     name: 'sound3.m4a',
   });
-  // PCのローカルIPを指定すること  192.168.11.25 transcribe
-  const res = await fetch(`http://${IP_ADDRESS}:8000/transcribe`, {
+  // PCのローカルIPを指定すること  192.168.11.25
+  const res = await fetch(`http://${IP_ADDRESS}:8000/character_reactions`, {
     method: 'POST',
     body: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
   });
   if (!res.ok) {
     throw new Error(`HTTP error! status: ${res.status}`);
   }
+
   const data: TranscriptionResponse = await res.json();
   console.log(data.text);
   console.log(data.analyze);

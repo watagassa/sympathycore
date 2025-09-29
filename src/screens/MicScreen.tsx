@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../utils/types';
@@ -8,6 +8,7 @@ import { ConnectionModal } from '../components/ConnectionModal';
 import { Wifi } from 'lucide-react-native';
 import { MicRecorder } from '../components/MicRecorder';
 import { useBle } from '../utils/useBle';
+import { getLatestEmotion } from '../utils/sqlite/sqlite';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList>;
@@ -18,6 +19,20 @@ export const MicScreen: React.FC<Props> = ({ navigation }) => {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState(initialAnalysis);
   const ble = useBle();
+  useEffect(() => {
+    const setting = async () => {
+      const data = await getLatestEmotion();
+      console.log('data??', data);
+      if (data) {
+        setLastAnalysis({
+          sentiment: data.sentiment,
+          score: data.score,
+          timestamp: data.timestamp,
+        });
+      }
+    };
+    setting();
+  }, []);
 
   return (
     <ScreenLayout activeScreen="Mic" navigation={navigation}>
@@ -49,11 +64,12 @@ export const MicScreen: React.FC<Props> = ({ navigation }) => {
       {/* 最新分析結果 */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>最新の分析結果</Text>
-        <Text style={styles.emotionText}>{lastAnalysis.emotion}</Text>
+        <Text style={styles.emotionText}>{lastAnalysis.sentiment}</Text>
         <Text style={styles.emotionLabel}>検出された感情</Text>
+        <Text>{}</Text>
         <View style={styles.confidenceRow}>
           <Text style={styles.statusLabel}>信頼度</Text>
-          <Text style={styles.confidenceText}>{lastAnalysis.confidence}%</Text>
+          <Text style={styles.confidenceText}>{lastAnalysis.score * 100}%</Text>
         </View>
       </View>
 
