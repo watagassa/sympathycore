@@ -1,3 +1,5 @@
+import { Analysis } from '../utils/types';
+
 export const emotionData = [
   { emotion: 'Happy', percentage: 65, color: 'from-[#FFB347] to-[#FF6961]' },
   { emotion: 'Calm', percentage: 25, color: 'from-[#4A90E2] to-[#82CFFD]' },
@@ -13,8 +15,8 @@ export const emotionTimeSeriesData = [
   { time: '15:00', Happy: 58, Calm: 32, Excited: 28, Sad: 10, Angry: 7 },
 ];
 
-export const initialAnalysis = {
-  emotion: 'Happy',
-  confidence: 85,
-  timestamp: '14:32:15',
+export const initialAnalysis: Analysis = {
+  sentiment: 'データなし',
+  score: 0,
+  timestamp: '',
 };

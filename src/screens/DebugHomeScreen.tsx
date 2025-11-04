@@ -23,6 +23,13 @@ const DebugHomeScreen: React.FC<Props> = ({ navigation }) => {
         onPress={() => navigation.navigate('Detail')}
       />
       <Button title="BLEページへ" onPress={() => navigation.navigate('Ble')} />
+      <Button title="感情データ削除" onPress={() => deleteAllEmotions()} />
+      <Button
+        title="感情データテーブル削除"
+        onPress={() => {
+          dropEmotionsTable();
+        }}
+      />
       <Recorder />
     </View>
   );
@@ -30,6 +37,7 @@ const DebugHomeScreen: React.FC<Props> = ({ navigation }) => {
 
 import { StyleSheet } from 'react-native';
 import Recorder from '../components/Recorder';
+import { deleteAllEmotions, dropEmotionsTable } from '../utils/sqlite/sqlite';
 
 export default DebugHomeScreen;
 

@@ -15,8 +15,8 @@ db.transaction(tx => {
     `CREATE TABLE IF NOT EXISTS emotions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp TEXT NOT NULL,
-      value REAL NOT NULL,
-      emotion_type TEXT NOT NULL
+      score REAL NOT NULL,
+      sentiment TEXT NOT NULL
     );`,
   );
 });
@@ -24,7 +24,7 @@ db.transaction(tx => {
 // 感情データを保存する関数（timestampは関数内で取得）
 // await saveEmotion(0.85, 'happy');
 export const saveEmotion = (
-  value: number,
+  score: number,
   emotionType: string,
 ): Promise<void> => {
   const timestamp = new Date().toISOString();
@@ -32,10 +32,10 @@ export const saveEmotion = (
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
-        'INSERT INTO emotions (timestamp, value, emotion_type) VALUES (?, ?, ?);',
-        [timestamp, value, emotionType],
+        'INSERT INTO emotions (timestamp, score, sentiment) VALUES (?, ?, ?);',
+        [timestamp, score, emotionType],
         () => {
-          console.log('Saved:', { timestamp, value, emotionType });
+          console.log('Saved:', { timestamp, score, emotionType });
           resolve();
         },
         (_, error) => {
@@ -50,7 +50,7 @@ export const saveEmotion = (
 
 // 感情データを取得する関数
 export const getEmotions = (): Promise<
-  { id: number; timestamp: string; value: number; emotion_type: string }[]
+  { id: number; timestamp: string; score: number; sentiment: string }[]
 > => {
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
@@ -62,8 +62,8 @@ export const getEmotions = (): Promise<
           const data: {
             id: number;
             timestamp: string;
-            value: number;
-            emotion_type: string;
+            score: number;
+            sentiment: string;
           }[] = [];
           for (let i = 0; i < rows.length; i++) {
             data.push(rows.item(i));
@@ -83,7 +83,7 @@ export const getEmotions = (): Promise<
 export const getEmotionsFromNDaysAgo = (
   n: number,
 ): Promise<
-  { id: number; timestamp: string; value: number; emotion_type: string }[]
+  { id: number; timestamp: string; score: number; sentiment: string }[]
 > => {
   return new Promise((resolve, reject) => {
     const today = new Date();
@@ -105,8 +105,8 @@ export const getEmotionsFromNDaysAgo = (
           const data: {
             id: number;
             timestamp: string;
-            value: number;
-            emotion_type: string;
+            score: number;
+            sentiment: string;
           }[] = [];
           for (let i = 0; i < rows.length; i++) {
             data.push(rows.item(i));
@@ -115,6 +115,36 @@ export const getEmotionsFromNDaysAgo = (
         },
         (_, error) => {
           console.error('Select n-days-ago error:', error);
+          reject(error);
+          return false;
+        },
+      );
+    });
+  });
+};
+
+export const getLatestEmotion = (): Promise<{
+  id: number;
+  timestamp: string;
+  score: number;
+  sentiment: string;
+} | null> => {
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `SELECT * FROM emotions
+         ORDER BY timestamp DESC
+         LIMIT 1;`,
+        [],
+        (_, result) => {
+          if (result.rows.length > 0) {
+            resolve(result.rows.item(0));
+          } else {
+            resolve(null); // データがない場合
+          }
+        },
+        (_, error) => {
+          console.error('Select latest error:', error);
           reject(error);
           return false;
         },
@@ -135,6 +165,26 @@ export const deleteAllEmotions = (): Promise<void> => {
         },
         (_, error) => {
           console.error('Delete all error:', error);
+          reject(error);
+          return false;
+        },
+      );
+    });
+  });
+};
+
+export const dropEmotionsTable = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'DROP TABLE IF EXISTS emotions;',
+        [],
+        () => {
+          console.log('Dropped emotions table');
+          resolve();
+        },
+        (_, error) => {
+          console.error('Drop table error:', error);
           reject(error);
           return false;
         },
