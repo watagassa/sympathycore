@@ -10,7 +10,7 @@ export type RootStackParamList = {
 };
 
 export type analyzeType = {
-  sentiment: 'happy' | 'sad' | 'angry' | 'fear' | 'hate';
+  sentiment: 'happy' | 'sad' | 'angry' | 'fear' | 'love';
   score: number; // 0.0 - 1.0
   ths: [number, number, number]; // [time, hue, saturation]
 };

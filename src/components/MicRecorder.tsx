@@ -105,7 +105,6 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
             await Sound.startRecorder(nextPath);
             isRecordingRef.current = true;
           }
-
           const data = await getLatestEmotion();
           if (data) {
             setLastAnalysis({
@@ -134,8 +133,22 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
   }, [isRecording]);
 
   useEffect(() => {
+    const a = async () => {
+      if (isRecordingRef.current) {
+        if (!isRecording) {
+          isRecordingRef.current = false;
+          await Sound.stopRecorder();
+        }
+      }
+    };
+    a();
+  }, [isRecordingRef.current]);
+
+  useEffect(() => {
     console.log('ble.floatData changed:', ble.floatData);
   }, [ble.floatData]);
+
+  useEffect(() => {});
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -206,7 +219,7 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
   };
   useEffect(() => {
     if (!ble.connectedDevice) {
-      ble.setFloatData({ val1: 0, val2: 0, val3: 0 });
+      ble.setFloatData({ val1: 0.765, val2: 0.94, val3: 0.6 });
       ble.disconnect();
       stopRecording();
     }
