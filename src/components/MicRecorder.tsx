@@ -28,8 +28,8 @@ export const MicRecorder: React.FC<MicRecorderProps> = ({
   setIsAnalyzing,
   setLastAnalysis,
   ble,
-  setShowConnectionModal,
-}: MicRecorderProps) => {
+}: // setShowConnectionModal,
+MicRecorderProps) => {
   const isRecordingRef = useRef(false);
   const pathIndexRef = useRef(0);
   const audioPathRef = useRef(
